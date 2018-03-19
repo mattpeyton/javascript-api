@@ -4,9 +4,9 @@ info:
   title: Code Louisville Winter 2018 JS-API
 # during dev, should point to your local machine
 host: localhost:8080
-# basePath prefixes all resource paths 
+# basePath prefixes all resource paths
 basePath: /
-# 
+#
 schemes:
   # tip: remove http to make production-grade
   - http
@@ -17,65 +17,217 @@ consumes:
 # format of the responses to the client (Accepts)
 produces:
   - application/json
+# follow RFC 6750, section 2.1.  Authorization Request Header Field
+securityDefinitions:
+  bearerAuth:
+    type: apiKey
+    name: Authorization
+    in: header
 paths:
-  /hello:
-    # binds a127 app logic to a route
-    x-swagger-router-controller: helloWorld
-    get:
-      description: Returns 'Hello' to the caller
-      # used as the method name of the controller
-      operationId: hello
-      parameters:
-        - name: name
-          in: query
-          description: The name of the person to whom to say hello
-          required: false
-          type: string
-      responses:
-        "200":
-          description: Success
-          schema:
-            # a pointer to a definition
-            $ref: "#/definitions/HelloWorldResponse"
-        # responses may fall through to errors
-        default:
-          description: Error
-          schema:
-            $ref: "#/definitions/ErrorResponse"
-  /database-test:
-    # binds a127 app logic to a route
-    x-swagger-router-controller: helloWorld
-    get:
-      description: Returns a result from the databasse
-      # used as the method name of the controller
-      operationId: hello_database
-      responses:
-        "200":
-          description: Success
-          schema:
-            # a pointer to a definition
-            $ref: "#/definitions/DatabaseTestResponse"
-        # responses may fall through to errors
-        default:
-          description: Error
-          schema:
-            $ref: "#/definitions/ErrorResponse"
   /swagger:
     x-swagger-pipe: swagger_raw
+  /signup:
+    x-swagger-router-controller: userController
+    post:
+      operationId: usersSignup
+      parameters:
+        - name: userInfo
+          in: body
+          description: The user information to register
+          required: true
+          schema:
+            # a pointer to a definition
+            $ref: "#/definitions/User"
+      responses:
+        "200":
+          description: Success
+          schema:
+            # a pointer to a definition
+            $ref: "#/definitions/UsersResponse"
+        "400":
+          description: User already in database
+          schema:
+            # a pointer to a definition
+            $ref: "#/definitions/UsersResponse"
+        "401":
+          description: Authentication information is missing or invalid
+          schema:
+            $ref: "#/definitions/UnauthorizedError"
+        default:
+          description: Error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+  /users:
+    x-swagger-router-controller: userController
+    get:
+      description: Returns json list of users
+      security:
+        - bearerAuth: []
+      # used as the method name of the controller
+      operationId: usersGet
+      parameters: []
+      responses:
+        "200":
+          description: Success
+          schema:
+            type: array
+            items:
+              $ref: "#/definitions/UserWithId"
+        # responses may fall through to errors
+        default:
+          description: Error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+  /login:
+    x-swagger-router-controller: userController
+    post:
+      operationId: usersLogin
+      parameters:
+        - name: userCredentials
+          in: body
+          description: The user credentials (user name and password)
+          required: true
+          schema:
+            # a pointer to a definition
+            $ref: "#/definitions/Credentials"
+      responses:
+        "200":
+          description: Success
+          schema:
+            # a pointer to a definition
+            $ref: "#/definitions/UsersToken"
+        default:
+          description: Error
+          schema:
+            $ref: "#/definitions/ErrorResponse"    
+  /logout:
+    x-swagger-router-controller: userController
+    post:
+      security:
+        - bearerAuth: []
+      operationId: usersLogout
+      parameters:
+        - name: userToken
+          in: body
+          description: Disable access providing a valid token
+          required: true
+          schema:
+            # a pointer to a definition
+            $ref: "#/definitions/UsersToken"
+      responses:
+        "200":
+          description: Success
+          schema:
+            # a pointer to a definition
+            $ref: "#/definitions/UsersResponse"
+        default:
+          description: Error
+          schema:
+            $ref: "#/definitions/ErrorResponse"    
+  /users/{userId}:
+    x-swagger-router-controller: userController
+    put:
+      description: Handles PUT for /users in order to update an existing user
+      security:
+        - bearerAuth: []
+      # used as the method name of the controller
+      operationId: usersPut
+      parameters:
+        - name: userId
+          in: path
+          description: The id of the user to update
+          required: true
+          type: integer
+          format: int64
+        - name: userInfo
+          in: body
+          description: The user information to update
+          required: true
+          schema:
+            # a pointer to a definition
+            $ref: "#/definitions/User"
+      responses:
+        "200":
+          description: Success
+          schema:
+            # a pointer to a definition
+            $ref: "#/definitions/UsersResponse"
+        "401":
+          description: Authentication information is missing or invalid
+          schema:
+            $ref: "#/definitions/UnauthorizedError"
+        "403":
+          description: Access forbidden
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        # responses may fall through to errors
+        default:
+          description: Error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 # complex objects have schema definitions
 definitions:
-  HelloWorldResponse:
+  User:
+    type: "object"
+    properties:
+      firstName:
+        type: "string"
+      lastName:
+        type: "string"
+      birthMonth:
+        type: "integer"
+      birthDay:
+        type: "integer"
+      birthYear:
+        type: "integer"
+      email:
+        type: "string"
+      password:
+        type: "string"
+        format: password
+  Credentials:
+    type: "object"
+    properties:
+      email:
+        type: "string"
+      password:
+        type: "string"
+        format: password
+  UsersResponse:
     required:
       - message
     properties:
       message:
         type: string
-  DatabaseTestResponse:
+  UsersToken:
+    required:
+      - token
+    properties:
+      token:
+        type: "string"
+  UnauthorizedError:
     required:
       - message
     properties:
       message:
         type: string
+  UserWithId:
+    type: "object"
+    properties:
+      firstName:
+        type: "string"
+      lastName:
+        type: "string"
+      birthMonth:
+        type: "integer"
+      birthDay:
+        type: "integer"
+      birthYear:
+        type: "integer"
+      email:
+        type: "string"
+      id:
+        type: "integer"
   ErrorResponse:
     required:
       - message

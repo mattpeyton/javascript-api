@@ -1,8 +1,36 @@
 const Sequelize = require('sequelize');
-const CodeLouisvilleStudents = require('./models/codeLouisvilleStudents')
+const url = require('url');
+const usersModel = require('./models/user');
+const authtokensModel = require('./models/authtokens');
 
-const sequelize = new Sequelize('clproject', 'user', 'password', {
-  host: 'db',
+
+var hostname = 'db';
+var username = 'user';
+var password = 'password';
+var database = 'clproject';
+var port = 5432;
+
+console.log('DATABASE_URL: ' + process.env.DATABASE_URL);
+
+databaseUrl = process.env.DATABASE_URL || '';
+if (databaseUrl != '') {
+  const parsedDatabaseUrl = url.parse(databaseUrl);
+  hostname = parsedDatabaseUrl.hostname;
+  username = parsedDatabaseUrl.auth.split(":")[0];
+  password = parsedDatabaseUrl.auth.split(":")[1];
+  database = parsedDatabaseUrl.pathname.replace("/", "");
+  port = parsedDatabaseUrl.port;
+
+  console.log('hostname: ' + hostname);
+  console.log('username: ' + username);
+  console.log('password: ' + password);
+  console.log('pathname: ' + database);
+  console.log('port: ' + port);
+}
+
+const sequelize = new Sequelize(database, username, password, {
+  port: port,
+  host: hostname,
   dialect: 'postgres',
   pool: {
     max: 5,
@@ -15,8 +43,10 @@ const sequelize = new Sequelize('clproject', 'user', 'password', {
   operatorsAliases: false
 });
 
-var codeLouisvilleStudents = CodeLouisvilleStudents(sequelize)
+var users = usersModel(sequelize);
+var authtokens = authtokensModel(sequelize);
 
 module.exports = {
-  codeLouisvilleStudents: codeLouisvilleStudents 
-}
+  users: users,
+  authtokens: authtokens
+};
